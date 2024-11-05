@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Test Plan" enabled="true">
+      <stringProp name="TestPlan.comments"></stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Thread Group" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Data Prepare into same file sheet" enabled="false">
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="script">import org.apache.poi.ss.usermodel.*
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.io.FileInputStream
+import java.io.FileOutputStream
+
+// Define the path to the Excel file, the sheet names, and the column indices
+def excelFilePath = &quot;F:\\My learning items\\test.xlsx&quot;
+def readSheetName = &quot;test&quot;      // Sheet to read from
+def writeSheetName = &quot;Results&quot;    // Sheet to write to
+def appIdColumnIndex = 4          // Column index for Application ID (C column)
+def supportTypeColumnIndex = 20     // Column index for Support Type (D column)
+def supportReasonsColumnIndex = 21 // Column index for Support Reasons (V column)
+def targetAppIdColumnIndex = 0    // Column in write sheet to store Application ID
+def targetSupportTypeColumnIndex = 1 // Column in write sheet to store Support Type
+def targetSupportReasonsColumnIndex = 2 // Column in write sheet to store Support Reasons
+def targetEnumColumnIndex = 3      // Column in write sheet to store enums
+def targetSupportTypeValueColumnIndex = 4 // New column for Support Type value (0 or 1)
+
+// Define the mappings from phrases to enums
+def enumMap = [
+    &quot;Persons with disability headed household lacking alternate income support and able bodied member&quot; : &quot;dis_reason_1&quot;,
+    &quot;Female headed household lacking alternate income support and able-bodied member&quot;                  : &quot;dis_reason_3&quot;
+    // Add more mappings as needed
+]
+
+// Load the Excel file
+FileInputStream fis = new FileInputStream(excelFilePath)
+Workbook workbook = new XSSFWorkbook(fis)
+Sheet readSheet = workbook.getSheet(readSheetName)
+
+// Create or get the write sheet
+Sheet writeSheet = workbook.getSheet(writeSheetName) ?: workbook.createSheet(writeSheetName)
+
+// Process each row in the read sheet
+readSheet.eachWithIndex { row, rowIndex -&gt;
+    def cellAppId = row.getCell(appIdColumnIndex)
+    def cellSupportType = row.getCell(supportTypeColumnIndex)
+    def cellSupportReasons = row.getCell(supportReasonsColumnIndex)
+    
+    if (cellAppId != null &amp;&amp; cellSupportType != null &amp;&amp; cellSupportReasons != null) {
+        // Read Application ID, Support Type, and original Support Reasons
+        def appId = cellAppId.toString().trim()
+        def supportType = cellSupportType.toString().trim()
+        def supportReasonsOriginal = cellSupportReasons.toString().trim()
+        
+        // Determine the value based on supportType
+        def supportTypeValue = (supportType == &quot;LIPW&quot;) ? 0 : (supportType == &quot;DIS&quot;) ? 1 : null
+
+        // Split cell content by identifying patterns like &quot;1. &quot;, &quot;2. &quot; at the start of each line
+        def supportReasonValues = supportReasonsOriginal.split(/(?&lt;=\d\.)\s+/)
+        
+        // Initialize a list to hold the matched enum values
+        def matchedEnums = []
+        
+        // Process each split value individually
+        supportReasonValues.each { value -&gt;
+            def trimmedValue = value.trim()
+            
+            // Check each phrase in enumMap to see if it matches
+            enumMap.each { phrase, enumValue -&gt;
+                if (trimmedValue.contains(phrase)) {
+                    matchedEnums.add(enumValue)
+                }
+            }
+        }
+        
+        // Write Application ID, original Support Type, original Support Reasons, matched enums, and support type value to the write sheet
+        def writeRow = writeSheet.getRow(rowIndex) ?: writeSheet.createRow(rowIndex)
+        writeRow.createCell(targetAppIdColumnIndex).setCellValue(appId)
+        writeRow.createCell(targetSupportTypeColumnIndex).setCellValue(supportType)
+        writeRow.createCell(targetSupportReasonsColumnIndex).setCellValue(supportReasonsOriginal)
+        writeRow.createCell(targetEnumColumnIndex).setCellValue(matchedEnums.join(&quot;, &quot;))
+        writeRow.createCell(targetSupportTypeValueColumnIndex).setCellValue(supportTypeValue)
+    }
+}
+
+// Save changes to Excel file
+fis.close()
+FileOutputStream fos = new FileOutputStream(excelFilePath)
+workbook.write(fos)
+fos.close()
+workbook.close()
+</stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Data Preparation" enabled="true">
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="script">import org.apache.poi.ss.usermodel.*
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.io.FileInputStream
+import java.io.FileOutputStream
+
+// Define the path to the Excel file, the sheet names, and the column indices
+def excelFilePath = &quot;F:\\My learning items\\test.xlsx&quot;
+def readSheetName = &quot;test&quot;      // Sheet to read from
+def writeSheetName = &quot;Results&quot;    // Sheet to write to
+def appIdColumnIndex = 4          // Column index for Application ID (C column)
+def supportTypeColumnIndex = 20     // Column index for Support Type (D column)
+def supportReasonsColumnIndex = 21 // Column index for Support Reasons (V column)
+def targetAppIdColumnIndex = 0    // Column in write sheet to store Application ID
+def targetSupportTypeColumnIndex = 1 // Column in write sheet to store Support Type
+def targetSupportReasonsColumnIndex = 2 // Column in write sheet to store Support Reasons
+def targetEnumColumnIndex = 3      // Column in write sheet to store enums
+def targetSupportTypeValueColumnIndex = 4 // New column for Support Type value (0 or 1)
+
+// Define the mappings from phrases to enums
+def enumMap = [
+    
+    // Add more mappings as needed
+	&quot;Poor household with no sufficient income to sustain the household&quot; 								:&quot;LIPW_REASON_1&quot;,
+	&quot;Household contain able bodied youth member (18-35)&quot;											:&quot;LIPW_REASON_2&quot;,
+	&quot;Household headed by young men and women between the ages of 18 and 35&quot;							:&quot;LIPW_REASON_3&quot;,
+	&quot;Many members who are dependents (HH with dependants greater than 3)&quot;								:&quot;LIPW_REASON_4&quot;,
+	&quot;Poor household which have persons with severe disabilities&quot;									:&quot;LIPW_REASON_5&quot;,
+	&quot;Child headed households with no alternate income support&quot;										:&quot;DIS_REASON_1&quot;,
+	&quot;Elderly headed household lacking alternate income support and able bodied member&quot;					:&quot;DIS_REASON_2&quot;,
+	&quot;Persons with disability headed household lacking alternate income support and able bodied member&quot;		:&quot;DIS_REASON_3&quot;,
+	&quot;Chronically ill headed household lacking alternate income and able bodied member&quot;					:&quot;DIS_REASON_4&quot;,
+	&quot;Female headed household lacking alternate income support and able-bodied member&quot;					:&quot;DIS_REASON_5&quot;
+
+]
+
+// Load the Excel file
+FileInputStream fis = new FileInputStream(excelFilePath)
+Workbook workbook = new XSSFWorkbook(fis)
+Sheet readSheet = workbook.getSheet(readSheetName)
+
+// Create or get the write sheet
+Sheet writeSheet = workbook.getSheet(writeSheetName) ?: workbook.createSheet(writeSheetName)
+
+// Process each row in the read sheet
+readSheet.eachWithIndex { row, rowIndex -&gt;
+    def cellAppId = row.getCell(appIdColumnIndex)
+    def cellSupportType = row.getCell(supportTypeColumnIndex)
+    def cellSupportReasons = row.getCell(supportReasonsColumnIndex)
+    
+    if (cellAppId != null &amp;&amp; cellSupportType != null &amp;&amp; cellSupportReasons != null) {
+        // Read Application ID, Support Type, and original Support Reasons
+        def appId = cellAppId.toString().trim()
+        def supportType = cellSupportType.toString().trim()
+        def supportReasonsOriginal = cellSupportReasons.toString().trim()
+        
+        // Determine the value based on supportType
+        def supportTypeValue = (supportType == &quot;LIPW&quot;) ? 0 : (supportType == &quot;DIS&quot;) ? 1 : null
+
+        // Split cell content by identifying patterns like &quot;1. &quot;, &quot;2. &quot; at the start of each line
+        def supportReasonValues = supportReasonsOriginal.split(/(?&lt;=\d\.)\s+/)
+        
+        // Initialize a list to hold the matched enum values
+        def matchedEnums = []
+        
+        // Process each split value individually
+        supportReasonValues.each { value -&gt;
+            def trimmedValue = value.trim()
+            
+            // Check each phrase in enumMap to see if it matches
+            enumMap.each { phrase, enumValue -&gt;
+                if (trimmedValue.contains(phrase)) {
+                    matchedEnums.add(enumValue)
+                }
+            }
+        }
+        
+        // Write Application ID, original Support Type, original Support Reasons, matched enums, and support type value to the write sheet
+        def writeRow = writeSheet.getRow(rowIndex) ?: writeSheet.createRow(rowIndex)
+        writeRow.createCell(targetAppIdColumnIndex).setCellValue(appId)
+        writeRow.createCell(targetSupportTypeColumnIndex).setCellValue(supportType)
+        writeRow.createCell(targetSupportReasonsColumnIndex).setCellValue(supportReasonsOriginal)
+        writeRow.createCell(targetEnumColumnIndex).setCellValue(matchedEnums.join(&quot;, &quot;))
+        writeRow.createCell(targetSupportTypeValueColumnIndex).setCellValue(supportTypeValue)
+    }
+}
+
+// Save changes to Excel file
+fis.close()
+FileOutputStream fos = new FileOutputStream(excelFilePath)
+workbook.write(fos)
+fos.close()
+workbook.close()
+</stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="Data Prepare into CSV" enabled="true">
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="script">import org.apache.poi.ss.usermodel.*
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.PrintWriter
+
+// Define the path to the Excel file and the new CSV output path
+def excelFilePath = &quot;F:/My learning items/test.xlsx&quot;
+def csvOutputPath = &quot;F:/My learning items/results_inCSV_1.csv&quot;
+def readSheetName = &quot;test&quot;
+def writeSheetName = &quot;Results&quot;
+
+// Load the Excel file
+FileInputStream fis = new FileInputStream(excelFilePath)
+Workbook workbook = new XSSFWorkbook(fis)
+Sheet writeSheet = workbook.getSheet(writeSheetName) ?: workbook.createSheet(writeSheetName)
+
+// Process each row in the write sheet and save to CSV
+fis.close()
+
+// Save changes to Excel file if needed
+FileOutputStream fos = new FileOutputStream(excelFilePath)
+workbook.write(fos)
+fos.close()
+workbook.close()
+
+// Write the output to CSV, maintaining the column order
+PrintWriter csvWriter = new PrintWriter(new FileOutputStream(csvOutputPath))
+
+// Loop through each row in `writeSheet`
+for (int rowIndex = 0; rowIndex &lt;= writeSheet.getLastRowNum(); rowIndex++) {
+    Row row = writeSheet.getRow(rowIndex)
+    if (row != null) {
+        List&lt;String&gt; csvRow = []
+        
+        // Loop through each cell in the row
+        for (int cellIndex = 0; cellIndex &lt; row.getLastCellNum(); cellIndex++) {
+            Cell cell = row.getCell(cellIndex)
+            
+            // Replace any commas in cell values to ensure CSV format is preserved
+            def cellValue = (cell != null) ? cell.toString().replace(&quot;,&quot;, &quot;&quot;) : &quot;&quot;
+            csvRow.add(&quot;\&quot;${cellValue}\&quot;&quot;)
+        }
+        
+        // Join the cell values with commas and write the line to CSV
+        csvWriter.println(csvRow.join(&quot;,&quot;))
+    }
+}
+
+// Close the CSV writer
+csvWriter.close()
+</stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+        </JSR223Sampler>
+        <hashTree/>
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
+          <stringProp name="delimiter">,</stringProp>
+          <stringProp name="fileEncoding"></stringProp>
+          <stringProp name="filename">F:/My learning items/results_inCSV_1.csv</stringProp>
+          <boolProp name="ignoreFirstLine">false</boolProp>
+          <boolProp name="quotedData">false</boolProp>
+          <boolProp name="recycle">true</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="variableNames">appId,t2,t3,reason,type</stringProp>
+        </CSVDataSet>
+        <hashTree/>
+        <JDBCDataSource guiclass="TestBeanGUI" testclass="JDBCDataSource" testname="JDBC Connection Configuration" enabled="true">
+          <boolProp name="autocommit">true</boolProp>
+          <stringProp name="checkQuery"></stringProp>
+          <stringProp name="connectionAge">5000</stringProp>
+          <stringProp name="connectionProperties"></stringProp>
+          <stringProp name="dataSource">dbCon</stringProp>
+          <stringProp name="dbUrl"></stringProp>
+          <stringProp name="driver">com.microsoft.sqlserver.jdbc.SQLServerDriver</stringProp>
+          <stringProp name="initQuery"></stringProp>
+          <boolProp name="keepAlive">true</boolProp>
+          <stringProp name="password"></stringProp>
+          <stringProp name="poolMax">0</stringProp>
+          <boolProp name="preinit">false</boolProp>
+          <stringProp name="timeout">10000</stringProp>
+          <stringProp name="transactionIsolation">DEFAULT</stringProp>
+          <stringProp name="trimInterval">60000</stringProp>
+          <stringProp name="username"></stringProp>
+        </JDBCDataSource>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="JDBC Request" enabled="true">
+          <stringProp name="dataSource">dbCon</stringProp>
+          <stringProp name="query">UPDATE beneficiary
+SET b = &apos;${reason}&apos;,
+    d = &apos;${type}&apos;
+WHERE application_id = &apos;${appId}&apos;;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="queryType">Update Statement</stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
